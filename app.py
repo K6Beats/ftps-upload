@@ -13,6 +13,7 @@ def log(msg: str):
 
 def run_lftp_upload(host, username, password, filename, temp_path):
     try:
+        log(f"🔧 [thread] Preparing lftp command for: {filename}")
         lftp_cmd = textwrap.dedent(
             f"""
             set ftp:ssl-force true
@@ -24,17 +25,18 @@ def run_lftp_upload(host, username, password, filename, temp_path):
             """
         ).strip()
 
-        log(f"🚀 [thread] Running lftp for {filename}...")
+        log(f"📜 [thread] lftp command:\n{lftp_cmd}")
+
         result = subprocess.run(
             ["lftp", "-c", lftp_cmd],
             capture_output=True,
             text=True,
-            timeout=600  # 10 minutes
+            timeout=600
         )
 
-        log(f"📄 [thread] lftp stdout:\n{result.stdout or '<empty>'}")
-        log(f"⚠️  [thread] lftp stderr:\n{result.stderr or '<empty>'}")
-        log(f"🔚 [thread] lftp return-code = {result.returncode}")
+        log(f"📄 [thread] STDOUT:\n{result.stdout or '<empty>'}")
+        log(f"⚠️  [thread] STDERR:\n{result.stderr or '<empty>'}")
+        log(f"🔚 [thread] Return code: {result.returncode}")
 
         os.remove(temp_path)
 
