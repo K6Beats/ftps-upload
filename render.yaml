@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ftps-uploader
+    name: ftps-upload
     runtime: python
     buildCommand: ""
     startCommand: "gunicorn app:app"
