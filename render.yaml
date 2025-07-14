@@ -1,7 +1,11 @@
 services:
   - type: web
-    name: ftps-upload
-    runtime: python
-    buildCommand: ""
-    startCommand: "gunicorn app:app"
-    env: python
+    name: ftps-uploader
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 10000
