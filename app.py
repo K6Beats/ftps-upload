@@ -41,21 +41,19 @@ def upload():
 
         # FTPS setup
         ftps = FTP_TLS()
-        ftps.connect(host, 21, timeout=15)  # Explicit timeout
+        ftps.connect(host, 21, timeout=15)
         ftps.login(user=username, passwd=password)
         ftps.prot_p()
         ftps.set_pasv(True)
 
         print("✅ Logged in to FTPS")
-        print("📁 Current server directory (before):", ftps.pwd())
-        ftps.cwd('/release')
-        print("📁 Changed to directory: /release")
+        print("📁 Current server directory:", ftps.pwd())
 
         # Upload
         with open(temp_file_path, 'rb') as f:
             ftps.storbinary(f'STOR {remote_filename}', f)
 
-        print(f"✅ Upload complete: /release/{remote_filename}")
+        print(f"✅ Upload complete: /{remote_filename}")
         ftps.quit()
         os.remove(temp_file_path)
 
