@@ -1,21 +1,18 @@
 from flask import Flask, request, jsonify
-from ftplib import FTP_TLS
 import base64
 import os
-import socket
+import subprocess
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "✅ FTPS uploader is live and ready."
+    return "✅ FTPS uploader is live using lftp workaround."
 
 @app.route('/upload', methods=['POST'])
 def upload():
     try:
         data = request.get_json()
-
-        # Extract required fields
         host = data.get('host')
         username = data.get('username')
         password = data.get('password')
@@ -23,40 +20,35 @@ def upload():
         file_content_b64 = data.get('file_content')
 
         if not all([host, username, password, file_content_b64]):
-            return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields: host, username, password, file_content'
-            }), 400
+            return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
 
-        print(f"📥 Upload request: {remote_filename}")
-        print(f"🔗 Connecting to FTPS host: {host}")
+        print(f"📥 Upload: {remote_filename} to {host}")
 
-        # Decode base64
-        file_bytes = base64.b64decode(file_content_b64)
+        temp_path = f"/tmp/{remote_filename}"
+        with open(temp_path, 'wb') as f:
+            f.write(base64.b64decode(file_content_b64))
 
-        # Save to /tmp (safe for Render)
-        temp_file_path = f"/tmp/{remote_filename}"
-        with open(temp_file_path, 'wb') as f:
-            f.write(file_bytes)
+        # lftp upload command
+        cmd = f'''
+        lftp -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ftp:passive-mode true;
+            open -u {username},{password} ftps://{host};
+            put {temp_path} -o {remote_filename};
+            bye
+        "
+        '''
 
-        # FTPS setup
-        ftps = FTP_TLS()
-        ftps.connect(host, 21, timeout=15)
-        ftps.login(user=username, passwd=password)
-        ftps.prot_p()
-        ftps.set_pasv(True)
+        print("🔄 Running lftp...")
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
-        print("✅ Logged in to FTPS")
-        print("📁 Current server directory:", ftps.pwd())
+        if result.returncode != 0:
+            print("❌ lftp error:", result.stderr)
+            return jsonify({'status': 'error', 'message': result.stderr}), 500
 
-        # Upload
-        with open(temp_file_path, 'rb') as f:
-            ftps.storbinary(f'STOR {remote_filename}', f)
-
-        print(f"✅ Upload complete: /{remote_filename}")
-        ftps.quit()
-        os.remove(temp_file_path)
-
+        print("✅ File uploaded via lftp")
+        os.remove(temp_path)
         return jsonify({'status': 'success'}), 200
 
     except Exception as e:
